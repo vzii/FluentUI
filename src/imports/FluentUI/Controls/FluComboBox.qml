@@ -20,14 +20,14 @@ ComboBox {
     rightPadding: padding + (control.mirrored || !indicator || !indicator.visible ? 0 : indicator.width + spacing)
     enabled: !disabled
     delegate: FluItemDelegate {
-        width: contentItem.width
-        text: control.textRole ? (Array.isArray(control.model) ? modelData[control.textRole] : model[control.textRole]) : modelData
-        palette.text: control.palette.text
-        palette.highlightedText: control.palette.highlightedText
-        font.weight: control.currentIndex === index ? Font.DemiBold : Font.Normal
-        highlighted: control.highlightedIndex === index
-        hoverEnabled: control.hoverEnabled
-    }
+         width: parent.width
+         text: control.textRole ? (Array.isArray(control.model) ? modelData[control.textRole] : model[control.textRole]) : modelData
+         palette.text: control.palette.text
+         palette.highlightedText: control.palette.highlightedText
+         font.weight: control.currentIndex === index ? Font.DemiBold : Font.Normal
+         highlighted: control.highlightedIndex === index
+         hoverEnabled: control.hoverEnabled
+     }
 
     indicator: FluIcon {
         x: control.mirrored ? control.padding : control.width - width - control.padding
@@ -91,6 +91,8 @@ ComboBox {
         height: Math.min(contentItem.implicitHeight, control.Window.height - topMargin - bottomMargin)
         topMargin: 6
         bottomMargin: 6
+        modal:true
+        dim:false
         contentItem: ListView {
             clip: true
             implicitHeight: contentHeight
