@@ -32,12 +32,9 @@ int main(int argc, char *argv[])
     FramelessConfig::instance()->set(Global::Option::EnableBlurBehindWindow,false);
 #ifdef Q_OS_MACOS
     FramelessConfig::instance()->set(Global::Option::ForceNonNativeBackgroundBlur,false);
+    FramelessConfig::instance()->set(Global::Option::EnableBlurBehindWindow,true);
 #endif
     AppInfo* appInfo = new AppInfo();
-    IPC ipc(0);
-    if(!appInfo->isOwnerProcess(&ipc)){
-        return 0;
-    }
     QQmlApplicationEngine engine;
     FramelessHelper::Quick::registerTypes(&engine);
 #ifdef FLUENTUI_BUILD_STATIC_LIB

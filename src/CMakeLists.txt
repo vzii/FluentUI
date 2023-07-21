@@ -3,9 +3,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 project(fluentuiplugin LANGUAGES CXX)
 
-#设置QML插件输出目录->D:\Qt\6.4.3\msvc2019_64\qml\FluentUI
-set(QML_PLUGIN_DIRECTORY ${CMAKE_PREFIX_PATH}/qml/FluentUI)
-
 #设置版本号
 add_definitions(-DVERSION=1,3,7,4)
 
@@ -56,7 +53,7 @@ add_qmlplugin(fluentuiplugin
     SOURCES ${sources_files} fluentui.rc fluentui.qrc
     QMLFILES ${qml_files}
     QMLDIR imports/FluentUI
-    BINARY_DIR ${QML_PLUGIN_DIRECTORY}
+    BINARY_DIR ${FLUENTUI_QML_PLUGIN_DIRECTORY}
     LIBTYPE ${LIB_TYPE}
 )
 
@@ -72,4 +69,4 @@ target_link_libraries(fluentuiplugin PUBLIC
 )
 
 #安装
-install(DIRECTORY ${QML_PLUGIN_DIRECTORY} DESTINATION ${CMAKE_INSTALL_PREFIX}/imports)
+install(DIRECTORY ${FLUENTUI_QML_PLUGIN_DIRECTORY} DESTINATION ${CMAKE_INSTALL_PREFIX}/imports)

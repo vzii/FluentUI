@@ -8,7 +8,7 @@ import "qrc:///example/qml/component"
 FluScrollablePage{
 
     title:"TimePicker"
-
+    launchMode: FluPageType.SingleInstance
     FluArea{
         Layout.fillWidth: true
         Layout.topMargin: 20
@@ -23,7 +23,7 @@ FluScrollablePage{
             }
 
             FluText{
-                text:"hourFormat=FluTimePicker.H"
+                text:"hourFormat=FluTimePickerType.H"
             }
 
             FluTimePicker{
@@ -56,14 +56,14 @@ FluScrollablePage{
             }
 
             FluText{
-                text:"hourFormat=FluTimePicker.HH"
+                text:"hourFormat=FluTimePickerType.HH"
             }
 
             FluTimePicker{
-                 hourFormat:FluTimePicker.HH
-                 onCurrentChanged: {
-                     showSuccess(current.toLocaleTimeString(Qt.locale("de_DE")))
-                 }
+                hourFormat:FluTimePickerType.HH
+                onCurrentChanged: {
+                    showSuccess(current.toLocaleTimeString(Qt.locale("de_DE")))
+                }
             }
 
         }
@@ -72,7 +72,7 @@ FluScrollablePage{
         Layout.fillWidth: true
         Layout.topMargin: -1
         code:'FluTimePicker{
-    hourFormat:FluTimePicker.HH
+    hourFormat:FluTimePickerType.HH
 }'
     }
 
