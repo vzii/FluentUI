@@ -1467,6 +1467,58 @@ Module {
         }
     }
     Component {
+        name: "FluStatusViewType"
+        exports: ["FluentUI/FluStatusViewType 1.0"]
+        isCreatable: false
+        exportMetaObjectRevisions: [0]
+        Enum {
+            name: "StatusMode"
+            values: {
+                "Loading": 0,
+                "Empty": 1,
+                "Error": 2,
+                "Success": 4
+            }
+        }
+    }
+    Component {
+        name: "FluNavigationViewType"
+        exports: ["FluentUI/FluNavigationViewType 1.0"]
+        isCreatable: false
+        exportMetaObjectRevisions: [0]
+        Enum {
+            name: "DisplayMode"
+            values: {
+                "Open": 0,
+                "Compact": 1,
+                "Minimal": 2,
+                "Auto": 4
+            }
+        }
+        Enum {
+            name: "PageMode"
+            values: {
+                "Stack": 0,
+                "NoStack": 1
+            }
+        }
+    }
+    Component {
+        name: "FluPageType"
+        exports: ["FluentUI/FluPageType 1.0"]
+        isCreatable: false
+        exportMetaObjectRevisions: [0]
+        Enum {
+            name: "LaunchMode"
+            values: {
+                "Standard": 0,
+                "SingleTask": 1,
+                "SingleTop": 2,
+                "SingleInstance": 4
+            }
+        }
+    }
+    Component {
         name: "WindowHelper"
         prototype: "QObject"
         exports: ["FluentUI/WindowHelper 1.0"]

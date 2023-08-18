@@ -5,78 +5,48 @@ import QtQuick.Layouts 1.12
 import FluentUI 1.0
 
 Item {
-    enum DisplayMode {
-        Open,
-        Compact,
-        Minimal,
-        Auto
-    }
     property url logo
     property string title: ""
     property FluObject items
     property FluObject footerItems
-    property bool dontPageAnimation: false
-    property int displayMode: FluNavigationView.Auto
+    property int displayMode: FluNavigationViewType.Auto
     property Component autoSuggestBox
     property Component actionItem
     property int topPadding: 0
-    enum PageModeFlag{
-        Standard = 0,
-        SingleTop = 1,
-        SingleTask = 2
-    }
+    property int navWidth: 300
+    property int pageMode: FluNavigationViewType.Stack
+    signal logoClicked
     id:control
-    QtObject{
+    Item{
         id:d
-        property bool enableStack: true
-        property int displayMode: {
-            if(control.displayMode !==FluNavigationView.Auto){
-                return control.displayMode
-            }
-            if(control.width<=700){
-                return FluNavigationView.Minimal
-            }else if(control.width<=900){
-                return FluNavigationView.Compact
-            }else{
-                return FluNavigationView.Open
-            }
-        }
+        property bool animDisabled:false
         property var stackItems: []
+        property int displayMode: control.displayMode
         property bool enableNavigationPanel: false
-        property bool isCompact: d.displayMode === FluNavigationView.Compact
-        property bool isMinimal: d.displayMode === FluNavigationView.Minimal
-        property bool isCompactAndPanel: d.displayMode === FluNavigationView.Compact && d.enableNavigationPanel
-        property bool isCompactAndNotPanel:d.displayMode === FluNavigationView.Compact && !d.enableNavigationPanel
-        property bool isMinimalAndPanel: d.displayMode === FluNavigationView.Minimal && d.enableNavigationPanel
+        property bool isCompact: d.displayMode === FluNavigationViewType.Compact
+        property bool isMinimal: d.displayMode === FluNavigationViewType.Minimal
+        property bool isCompactAndPanel: d.displayMode === FluNavigationViewType.Compact && d.enableNavigationPanel
+        property bool isCompactAndNotPanel:d.displayMode === FluNavigationViewType.Compact && !d.enableNavigationPanel
+        property bool isMinimalAndPanel: d.displayMode === FluNavigationViewType.Minimal && d.enableNavigationPanel
         onIsCompactAndNotPanelChanged: {
             collapseAll()
         }
-        onDisplayModeChanged: {
-            if(d.displayMode === FluNavigationView.Compact){
-                collapseAll()
-            }
-            if(d.displayMode === FluNavigationView.Minimal){
-                anim_layout_list_x.enabled = false
-                d.enableNavigationPanel = false
-                timer_anim_x_enable.restart()
-            }
-        }
         function handleItems(){
-            var idx = 0
+            var _idx = 0
             var data = []
             if(items){
                 for(var i=0;i<items.children.length;i++){
                     var item = items.children[i]
-                    item.idx = idx
+                    item._idx = _idx
                     data.push(item)
-                    idx++
+                    _idx++
                     if(item instanceof FluPaneItemExpander){
                         for(var j=0;j<item.children.length;j++){
                             var itemChild = item.children[j]
                             itemChild.parent = item
-                            itemChild.idx = idx
+                            itemChild._idx = _idx
                             data.push(itemChild)
-                            idx++
+                            _idx++
                         }
                     }
                 }
@@ -85,15 +55,46 @@ Item {
                     for(var k=0;k<footerItems.children.length;k++){
                         var itemFooter = footerItems.children[k]
                         if (comEmpty.status === Component.Ready) {
-                            var objEmpty = comEmpty.createObject(items,{idx:idx});
-                            itemFooter.idx = idx;
+                            var objEmpty = comEmpty.createObject(items,{_idx:_idx});
+                            itemFooter._idx = _idx;
                             data.push(objEmpty)
-                            idx++
+                            _idx++
                         }
                     }
                 }
             }
             return data
+        }
+    }
+    Component.onCompleted: {
+        d.displayMode = Qt.binding(function(){
+            if(control.displayMode !==FluNavigationViewType.Auto){
+                return control.displayMode
+            }
+            if(control.width<=700){
+                return FluNavigationViewType.Minimal
+            }else if(control.width<=900){
+                return FluNavigationViewType.Compact
+            }else{
+                return FluNavigationViewType.Open
+            }
+        })
+        timer_anim_delay.restart()
+    }
+    Timer{
+        id:timer_anim_delay
+        interval: 200
+        onTriggered: {
+            d.animDisabled = true
+        }
+    }
+    Connections{
+        target: d
+        function onDisplayModeChanged(){
+            if(d.displayMode === FluNavigationViewType.Compact){
+                collapseAll()
+            }
+            d.enableNavigationPanel = false
         }
     }
     Component{
@@ -106,19 +107,7 @@ Item {
         id:com_panel_item_separatorr
         FluDivider{
             width: layout_list.width
-            height: {
-                if(model.parent){
-                    return model.parent.isExpand ? 1 : 0
-                }
-                return 1
-            }
-            Behavior on height {
-                NumberAnimation{
-                    duration: 167
-                    easing.type: Easing.Bezier
-                    easing.bezierCurve: [ 0, 0, 0, 1 ]
-                }
-            }
+            height: 1
         }
     }
     Component{
@@ -131,10 +120,9 @@ Item {
                 return 30
             }
             Behavior on height {
+                enabled: d.animDisabled
                 NumberAnimation{
-                    duration: 167
-                    easing.type: Easing.Bezier
-                    easing.bezierCurve: [ 0, 0, 0, 1 ]
+                    duration: 83
                 }
             }
             width: layout_list.width
@@ -154,8 +142,8 @@ Item {
         Item{
             height: 38
             width: layout_list.width
-            Rectangle{
-                radius: 4
+            FluControl{
+                id:item_control
                 anchors{
                     top: parent.top
                     bottom: parent.bottom
@@ -166,137 +154,155 @@ Item {
                     leftMargin: 6
                     rightMargin: 6
                 }
+                onClicked: {
+                    if(d.isCompactAndNotPanel){
+                        control_popup.showPopup(Qt.point(50,mapToItem(control,0,0).y),model.children)
+                        return
+                    }
+                    model.isExpand = !model.isExpand
+                }
                 Rectangle{
-                    width: 3
-                    height: 18
-                    radius: 1.5
-                    color: FluTheme.primaryColor.dark
+                    color:Qt.rgba(255/255,77/255,79/255,1)
+                    width: 10
+                    height: 10
+                    radius: 5
+                    border.width: 1
+                    border.color: Qt.rgba(1,1,1,1)
+                    anchors{
+                        right: parent.right
+                        verticalCenter: parent.verticalCenter
+                        rightMargin: 3
+                        verticalCenterOffset: -8
+                    }
                     visible: {
-                        for(var i=0;i<model.children.length;i++){
-                            var item = model.children[i]
-                            if(item.idx === nav_list.currentIndex && !model.isExpand){
-                                return true
+                        if(!model.isExpand){
+
+                            for(var i=0;i<model.children.length;i++){
+                                var item = model.children[i]
+                                if(item.infoBadge && item.count !==0){
+                                    return true
+                                }
                             }
                         }
                         return false
                     }
-                    anchors{
-                        verticalCenter: parent.verticalCenter
-                    }
                 }
-                FluIcon{
-                    rotation: model.isExpand?0:180
-                    iconSource:FluentIcons.ChevronUp
-                    iconSize: 15
-                    anchors{
-                        verticalCenter: parent.verticalCenter
-                        right: parent.right
-                        rightMargin: 12
-                    }
-                    opacity: {
-                        if(d.isCompactAndNotPanel){
-                            return false
-                        }
-                        return true
-                    }
-                    visible:opacity
-                    Behavior on opacity {
-                        NumberAnimation{
-                            duration: 83
-                        }
-                    }
-                    Behavior on rotation {
-                        NumberAnimation{
-                            duration: 83
-                        }
-                    }
-                }
-                MouseArea{
-                    id:item_mouse
-                    hoverEnabled: true
+                Rectangle{
+                    radius: 4
                     anchors.fill: parent
-                    onClicked: {
-                        if(d.isCompactAndNotPanel){
-                            control_popup.showPopup(Qt.point(50,mapToItem(control,0,0).y),model.children)
-                            return
-                        }
-                        model.isExpand = !model.isExpand
-                    }
-                }
-                color: {
-                    if(FluTheme.dark){
-                        if((nav_list.currentIndex === idx)&&type===0){
-                            return Qt.rgba(1,1,1,0.06)
-                        }
-                        if(item_mouse.containsMouse){
-                            return Qt.rgba(1,1,1,0.03)
-                        }
-                        return Qt.rgba(0,0,0,0)
-                    }else{
-                        if(nav_list.currentIndex === idx&&type===0){
-                            return Qt.rgba(0,0,0,0.06)
-                        }
-                        if(item_mouse.containsMouse){
-                            return Qt.rgba(0,0,0,0.03)
-                        }
-                        return Qt.rgba(0,0,0,0)
-                    }
-                }
-                Component{
-                    id:com_icon
-                    FluIcon{
-                        iconSource: {
-                            if(model.icon){
-                                return model.icon
+                    Rectangle{
+                        width: 3
+                        height: 18
+                        radius: 1.5
+                        color: FluTheme.primaryColor.dark
+                        visible: {
+                            for(var i=0;i<model.children.length;i++){
+                                var item = model.children[i]
+                                if(item._idx === nav_list.currentIndex && !model.isExpand){
+                                    return true
+                                }
                             }
-                            return 0
-                        }
-                        iconSize: 15
-                    }
-                }
-                Item{
-                    id:item_icon
-                    width: 30
-                    height: 30
-                    anchors{
-                        verticalCenter: parent.verticalCenter
-                        left:parent.left
-                        leftMargin: 3
-                    }
-                    Loader{
-                        anchors.centerIn: parent
-                        sourceComponent: {
-                            if(model.cusIcon){
-                                return model.cusIcon
-                            }
-                            return com_icon
-                        }
-                    }
-                }
-                FluText{
-                    id:item_title
-                    text:model.title
-                    opacity: {
-                        if(d.isCompactAndNotPanel){
                             return false
                         }
-                        return true
-                    }
-                    visible:opacity
-                    Behavior on opacity {
-                        NumberAnimation{
-                            duration: 83
+                        anchors{
+                            verticalCenter: parent.verticalCenter
                         }
                     }
-                    anchors{
-                        verticalCenter: parent.verticalCenter
-                        left:item_icon.right
-                    }
-                    color:{
-                        if(item_mouse.pressed){
-                            return FluTheme.dark ? FluColors.Grey80 : FluColors.Grey120
+                    FluIcon{
+                        id:item_icon_expand
+                        rotation: model.isExpand?0:180
+                        iconSource:FluentIcons.ChevronUp
+                        iconSize: 15
+                        anchors{
+                            verticalCenter: parent.verticalCenter
+                            right: parent.right
+                            rightMargin: 12
                         }
-                        return FluTheme.dark ? FluColors.White : FluColors.Grey220
+                        visible: {
+                            if(d.isCompactAndNotPanel){
+                                return false
+                            }
+                            return true
+                        }
+                        Behavior on rotation {
+                            enabled: d.animDisabled
+                            NumberAnimation{
+                                duration: 167
+                                easing.type: Easing.OutCubic
+                            }
+                        }
+                    }
+                    color: {
+                        if(FluTheme.dark){
+                            if((nav_list.currentIndex === _idx)&&type===0){
+                                return Qt.rgba(1,1,1,0.06)
+                            }
+                            if(item_control.hovered){
+                                return Qt.rgba(1,1,1,0.03)
+                            }
+                            return Qt.rgba(0,0,0,0)
+                        }else{
+                            if(nav_list.currentIndex === _idx&&type===0){
+                                return Qt.rgba(0,0,0,0.06)
+                            }
+                            if(item_control.hovered){
+                                return Qt.rgba(0,0,0,0.03)
+                            }
+                            return Qt.rgba(0,0,0,0)
+                        }
+                    }
+                    Component{
+                        id:com_icon
+                        FluIcon{
+                            iconSource: {
+                                if(model.icon){
+                                    return model.icon
+                                }
+                                return 0
+                            }
+                            iconSize: 15
+                        }
+                    }
+                    Item{
+                        id:item_icon
+                        width: 30
+                        height: 30
+                        anchors{
+                            verticalCenter: parent.verticalCenter
+                            left:parent.left
+                            leftMargin: 3
+                        }
+                        Loader{
+                            anchors.centerIn: parent
+                            sourceComponent: {
+                                if(model.cusIcon){
+                                    return model.cusIcon
+                                }
+                                return com_icon
+                            }
+                        }
+                    }
+                    FluText{
+                        id:item_title
+                        text:model.title
+                        visible: {
+                            if(d.isCompactAndNotPanel){
+                                return false
+                            }
+                            return true
+                        }
+                        elide: Text.ElideRight
+                        anchors{
+                            verticalCenter: parent.verticalCenter
+                            left:item_icon.right
+                            right: item_icon_expand.left
+                        }
+                        color:{
+                            if(item_control.pressed){
+                                return FluTheme.dark ? FluColors.Grey80 : FluColors.Grey120
+                            }
+                            return FluTheme.dark ? FluColors.White : FluColors.Grey220
+                        }
                     }
                 }
             }
@@ -306,10 +312,9 @@ Item {
         id:com_panel_item
         Item{
             Behavior on height {
+                enabled: d.animDisabled
                 NumberAnimation{
-                    duration: 167
-                    easing.type: Easing.Bezier
-                    easing.bezierCurve: [ 0, 0, 0, 1 ]
+                    duration: 83
                 }
             }
             clip: true
@@ -319,9 +324,15 @@ Item {
                 }
                 return 38
             }
+            visible: {
+                if(model.parent){
+                    return model.parent.isExpand ? true : false
+                }
+                return true
+            }
             width: layout_list.width
-            Rectangle{
-                radius: 4
+            FluControl{
+                id:item_control
                 anchors{
                     top: parent.top
                     bottom: parent.bottom
@@ -332,122 +343,141 @@ Item {
                     leftMargin: 6
                     rightMargin: 6
                 }
-                MouseArea{
-                    id:item_mouse
-                    hoverEnabled: true
-                    anchors.fill: parent
-                    onClicked: {
-                        if(type === 0){
-                            if(model.tapFunc){
-                                model.tapFunc()
-                            }else{
-                                nav_list.currentIndex = idx
-                                layout_footer.currentIndex = -1
-                                if(d.isMinimal || d.isCompact){
-                                    d.enableNavigationPanel = false
-                                }
-                            }
+                onClicked: {
+                    if(type === 0){
+                        if(model.tapFunc){
+                            model.tapFunc()
                         }else{
-                            if(model.tapFunc){
-                                model.tapFunc()
-                            }else{
-                                model.tap()
-                                d.stackItems.push(model)
-                                nav_list.currentIndex = nav_list.count-layout_footer.count+idx
-                                layout_footer.currentIndex = idx
-                                if(d.isMinimal || d.isCompact){
-                                    d.enableNavigationPanel = false
-                                }
+                            nav_list.currentIndex = _idx
+                            layout_footer.currentIndex = -1
+                            model.tap()
+                            if(d.isMinimal || d.isCompact){
+                                d.enableNavigationPanel = false
                             }
                         }
-                    }
-                }
-                color: {
-                    if(FluTheme.dark){
-                        if(type===0){
-                            if(nav_list.currentIndex === idx){
-                                return Qt.rgba(1,1,1,0.06)
-                            }
-                        }else{
-                            if(nav_list.currentIndex === (nav_list.count-layout_footer.count+idx)){
-                                return Qt.rgba(1,1,1,0.06)
-                            }
-                        }
-                        if(item_mouse.containsMouse){
-                            return Qt.rgba(1,1,1,0.03)
-                        }
-                        return Qt.rgba(0,0,0,0)
                     }else{
-                        if(type===0){
-                            if(nav_list.currentIndex === idx){
-                                return Qt.rgba(0,0,0,0.06)
-                            }
+                        if(model.tapFunc){
+                            model.tapFunc()
                         }else{
-                            if(nav_list.currentIndex === (nav_list.count-layout_footer.count+idx)){
-                                return Qt.rgba(0,0,0,0.06)
+                            nav_list.currentIndex = nav_list.count-layout_footer.count+_idx
+                            layout_footer.currentIndex = _idx
+                            model.tap()
+                            if(d.isMinimal || d.isCompact){
+                                d.enableNavigationPanel = false
                             }
                         }
-                        if(item_mouse.containsMouse){
-                            return Qt.rgba(0,0,0,0.03)
-                        }
-                        return Qt.rgba(0,0,0,0)
                     }
                 }
-                Component{
-                    id:com_icon
-                    FluIcon{
-                        iconSource: {
-                            if(model.icon){
-                                return model.icon
+                Rectangle{
+                    radius: 4
+                    anchors.fill: parent
+                    color: {
+                        if(FluTheme.dark){
+                            if(type===0){
+                                if(nav_list.currentIndex === _idx){
+                                    return Qt.rgba(1,1,1,0.06)
+                                }
+                            }else{
+                                if(nav_list.currentIndex === (nav_list.count-layout_footer.count+_idx)){
+                                    return Qt.rgba(1,1,1,0.06)
+                                }
                             }
-                            return 0
+                            if(item_control.hovered){
+                                return Qt.rgba(1,1,1,0.03)
+                            }
+                            return Qt.rgba(0,0,0,0)
+                        }else{
+                            if(type===0){
+                                if(nav_list.currentIndex === _idx){
+                                    return Qt.rgba(0,0,0,0.06)
+                                }
+                            }else{
+                                if(nav_list.currentIndex === (nav_list.count-layout_footer.count+_idx)){
+                                    return Qt.rgba(0,0,0,0.06)
+                                }
+                            }
+                            if(item_control.hovered){
+                                return Qt.rgba(0,0,0,0.03)
+                            }
+                            return Qt.rgba(0,0,0,0)
                         }
-                        iconSize: 15
                     }
-                }
-                Item{
-                    id:item_icon
-                    width: 30
-                    height: 30
-                    anchors{
-                        verticalCenter: parent.verticalCenter
-                        left:parent.left
-                        leftMargin: 3
+                    Component{
+                        id:com_icon
+                        FluIcon{
+                            iconSource: {
+                                if(model.icon){
+                                    return model.icon
+                                }
+                                return 0
+                            }
+                            iconSize: 15
+                        }
+                    }
+                    Item{
+                        id:item_icon
+                        width: 30
+                        height: 30
+                        anchors{
+                            verticalCenter: parent.verticalCenter
+                            left:parent.left
+                            leftMargin: 3
+                        }
+                        Loader{
+                            anchors.centerIn: parent
+                            sourceComponent: {
+                                if(model.cusIcon){
+                                    return model.cusIcon
+                                }
+                                return com_icon
+                            }
+                        }
+                    }
+                    FluText{
+                        id:item_title
+                        text:model.title
+                        visible: {
+                            if(d.isCompactAndNotPanel){
+                                return false
+                            }
+                            return true
+                        }
+                        elide: Text.ElideRight
+                        color:{
+                            if(item_control.pressed){
+                                return FluTheme.dark ? FluColors.Grey80 : FluColors.Grey120
+                            }
+                            return FluTheme.dark ? FluColors.White : FluColors.Grey220
+                        }
+                        anchors{
+                            verticalCenter: parent.verticalCenter
+                            left:item_icon.right
+                            right: item_dot_loader.left
+                        }
                     }
                     Loader{
-                        anchors.centerIn: parent
+                        id:item_dot_loader
+                        property bool isDot: (item_dot_loader.item&&item_dot_loader.item.isDot)
+                        anchors{
+                            right: parent.right
+                            verticalCenter: parent.verticalCenter
+                            rightMargin: isDot ? 3 : 10
+                            verticalCenterOffset: isDot ? -8 : 0
+                        }
                         sourceComponent: {
-                            if(model.cusIcon){
-                                return model.cusIcon
+                            if(model.infoBadge){
+                                return model.infoBadge
                             }
-                            return com_icon
+                            return undefined
                         }
-                    }
-                }
-                FluText{
-                    id:item_title
-                    text:model.title
-                    opacity: {
-                        if(d.isCompactAndNotPanel){
-                            return false
+                        Connections{
+                            target: d
+                            function onIsCompactAndNotPanelChanged(){
+                                if(item_dot_loader.item){
+                                    item_dot_loader.item.isDot = d.isCompactAndNotPanel
+                                }
+                            }
                         }
-                        return true
-                    }
-                    visible:opacity
-                    Behavior on opacity {
-                        NumberAnimation{
-                            duration: 83
-                        }
-                    }
-                    color:{
-                        if(item_mouse.pressed){
-                            return FluTheme.dark ? FluColors.Grey80 : FluColors.Grey120
-                        }
-                        return FluTheme.dark ? FluColors.White : FluColors.Grey220
-                    }
-                    anchors{
-                        verticalCenter: parent.verticalCenter
-                        left:item_icon.right
                     }
                 }
             }
@@ -472,20 +502,40 @@ Item {
                 Layout.preferredWidth: 30
                 Layout.preferredHeight: 30
                 Layout.alignment: Qt.AlignVCenter
-                disabled:  nav_swipe.depth === 1
+                disabled:  {
+                    return d.stackItems.length <= 1
+                }
                 iconSize: 13
                 onClicked: {
-                    nav_swipe.pop()
-                    d.stackItems.pop()
+                    d.stackItems = d.stackItems.slice(0, -1)
                     var item = d.stackItems[d.stackItems.length-1]
-                    d.enableStack = false
-                    if(item.idx<(nav_list.count - layout_footer.count)){
+                    if(item._idx<(nav_list.count - layout_footer.count)){
                         layout_footer.currentIndex = -1
                     }else{
-                        layout_footer.currentIndex = item.idx-(nav_list.count-layout_footer.count)
+                        layout_footer.currentIndex = item._idx-(nav_list.count-layout_footer.count)
                     }
-                    nav_list.currentIndex = item.idx
-                    d.enableStack = true
+                    nav_list.currentIndex = item._idx
+                    if(pageMode === FluNavigationViewType.Stack){
+                        var nav_stack = loader_content.item.navStack()
+                        var nav_stack2 = loader_content.item.navStack2()
+                        nav_stack.pop()
+                        if(nav_stack.currentItem.launchMode === FluPageType.SingleInstance){
+                            var url = nav_stack.currentItem.url
+                            var pageIndex = -1
+                            for(var i=0;i<nav_stack2.children.length;i++){
+                                var obj =  nav_stack2.children[i]
+                                if(obj.url === url){
+                                    pageIndex = i
+                                    break
+                                }
+                            }
+                            if(pageIndex !== -1){
+                                nav_stack2.currentIndex = pageIndex
+                            }
+                        }
+                    }else if(pageMode === FluNavigationViewType.NoStack){
+                        loader_content.setSource(item._ext.url,item._ext.argument)
+                    }
                 }
             }
             FluIconButton{
@@ -495,15 +545,23 @@ Item {
                 Layout.preferredWidth: d.isMinimal ? 30 : 0
                 Layout.preferredHeight: 30
                 Layout.alignment: Qt.AlignVCenter
+                clip: true
                 onClicked: {
                     d.enableNavigationPanel = !d.enableNavigationPanel
                 }
-                visible: d.isMinimal
-                Behavior on Layout.preferredWidth{
+                visible: opacity
+                opacity: d.isMinimal
+                Behavior on opacity{
+                    enabled: d.animDisabled
+                    NumberAnimation{
+                        duration: 83
+                    }
+                }
+                Behavior on Layout.preferredWidth {
+                    enabled: d.animDisabled
                     NumberAnimation{
                         duration: 167
-                        easing.type: Easing.Bezier
-                        easing.bezierCurve: [ 0, 0, 0, 1 ]
+                        easing.type: Easing.OutCubic
                     }
                 }
             }
@@ -520,6 +578,12 @@ Item {
                 }
                 sourceSize: Qt.size(40,40)
                 Layout.alignment: Qt.AlignVCenter
+                MouseArea{
+                    anchors.fill: parent
+                    onClicked: {
+                        logoClicked()
+                    }
+                }
             }
             FluText{
                 Layout.alignment: Qt.AlignVCenter
@@ -544,74 +608,80 @@ Item {
             }
         }
     }
-    Item{
+
+    Component{
+        id:com_stack_content
+        Item{
+            StackView{
+                id:nav_stack
+                anchors.fill: parent
+                clip: true
+                visible: !nav_stack2.visible
+                popEnter : Transition{}
+                popExit : Transition {}
+                pushEnter: Transition {}
+                pushExit : Transition{}
+                replaceEnter : Transition{}
+                replaceExit : Transition{}
+            }
+            StackLayout{
+                id:nav_stack2
+                anchors.fill: nav_stack
+                clip: true
+                visible: nav_stack.currentItem.launchMode === FluPageType.SingleInstance
+            }
+            function navStack(){
+                return nav_stack
+            }
+            function navStack2(){
+                return nav_stack2
+            }
+        }
+    }
+
+    Loader{
+        id:loader_content
         anchors{
-            left: d.isMinimal || d.isCompactAndPanel  ? parent.left : layout_list.right
+            left: parent.left
             top: nav_app_bar.bottom
             right: parent.right
             bottom: parent.bottom
-            leftMargin: d.isCompactAndPanel ? 50 : 0
-        }
-        StackView{
-            id:nav_swipe
-            anchors.fill: parent
-            clip: true
-            popEnter : Transition{}
-            popExit : Transition {
-                NumberAnimation {
-                    properties: "y"
-                    from: 0
-                    to: nav_swipe.height
-                    duration: dontPageAnimation ? 0 : 167
-                    easing.type: Easing.Bezier
-                    easing.bezierCurve: [ 1, 0, 0, 0 ]
+            leftMargin: {
+                if(d.isMinimal){
+                    return 0
                 }
-            }
-            pushEnter: Transition {
-                NumberAnimation {
-                    properties: "y";
-                    from: nav_swipe.height;
-                    to: 0
-                    duration: dontPageAnimation ? 0 : 167
-                    easing.type: Easing.Bezier
-                    easing.bezierCurve: [ 0, 0, 0, 1 ]
+                if(d.isCompact){
+                    return 50
                 }
+                return control.navWidth
             }
-            pushExit : Transition{}
-            replaceEnter : Transition{}
-            replaceExit : Transition{}
         }
+        Behavior on anchors.leftMargin {
+            enabled: d.animDisabled
+            NumberAnimation{
+                duration: 167
+                easing.type: Easing.OutCubic
+            }
+        }
+        sourceComponent: com_stack_content
     }
     MouseArea{
         anchors.fill: parent
         visible: d.isMinimalAndPanel||d.isCompactAndPanel
+        hoverEnabled: true
+        onWheel: {
+        }
         onClicked: {
             d.enableNavigationPanel = false
         }
     }
-
     Rectangle{
         id:layout_list
         width: {
             if(d.isCompactAndNotPanel){
                 return 50
             }
-            return 300
-        }
-        Behavior on width{
-            NumberAnimation{
-                duration: 167
-                easing.type: Easing.Bezier
-                easing.bezierCurve: [ 0, 0, 0, 1 ]
-            }
-        }
-        Behavior on x{
-            id:anim_layout_list_x
-            NumberAnimation{
-                duration: 167
-                easing.type: Easing.Bezier
-                easing.bezierCurve: [ 0, 0, 0, 1 ]
-            }
+            return control.navWidth
         }
         anchors{
             top: parent.top
@@ -620,30 +690,30 @@ Item {
         border.color: FluTheme.dark ? Qt.rgba(45/255,45/255,45/255,1) : Qt.rgba(226/255,230/255,234/255,1)
         border.width:  d.isMinimal || d.isCompactAndPanel ? 1 : 0
         color: {
-            if(d.isMinimal){
+            if(d.isMinimal || d.enableNavigationPanel){
                 return FluTheme.dark ? Qt.rgba(61/255,61/255,61/255,1) : Qt.rgba(243/255,243/255,243/255,1)
             }
             return "transparent"
         }
-
-        x: {
-            if(d.displayMode !== FluNavigationView.Minimal)
-                return 0
-            return d.isMinimalAndPanel  ? 0 : -width
-        }
-        FluAcrylic {
-            sourceItem:nav_swipe
-            anchors.fill: layout_list
-            color: {
-                if(d.isMinimalAndPanel || d.isCompactAndPanel){
-                    return FluTheme.dark ? Qt.rgba(61/255,61/255,61/255,1) : Qt.rgba(243/255,243/255,243/255,1)
-                }
-                return "transparent"
+        x: visible ? 0 : -width
+        Behavior on width {
+            enabled: d.animDisabled
+            NumberAnimation{
+                duration: 167
+                easing.type: Easing.OutCubic
             }
-            visible: d.isMinimalAndPanel || d.isCompactAndPanel
-            rectX: d.isCompactAndPanel ? (layout_list.x - 50) : layout_list.x
-            rectY: layout_list.y - 60
-            acrylicOpacity:0.9
+        }
+        Behavior on x {
+            enabled: d.animDisabled
+            NumberAnimation{
+                duration: 167
+                easing.type: Easing.OutCubic
+            }
+        }
+        visible: {
+            if(d.displayMode !== FluNavigationViewType.Minimal)
+                return true
+            return d.isMinimalAndPanel  ? true : false
         }
         Item{
             id:layout_header
@@ -655,27 +725,15 @@ Item {
                 id:loader_auto_suggest_box
                 anchors.centerIn: parent
                 sourceComponent: autoSuggestBox
-                opacity: {
+                visible: {
                     if(d.isCompactAndNotPanel){
                         return false
                     }
                     return true
                 }
-                visible: opacity
-                Behavior on opacity{
-                    NumberAnimation{
-                        duration: 83
-                    }
-                }
             }
             FluIconButton{
-                visible:opacity
-                opacity:d.isCompactAndNotPanel
-                Behavior on opacity{
-                    NumberAnimation{
-                        duration: 83
-                    }
-                }
+                visible:d.isCompactAndNotPanel
                 hoverColor: FluTheme.dark ? Qt.rgba(1,1,1,0.03) : Qt.rgba(0,0,0,0.03)
                 pressedColor: FluTheme.dark ? Qt.rgba(1,1,1,0.03) : Qt.rgba(0,0,0,0.03)
                 normalColor: FluTheme.dark ? Qt.rgba(0,0,0,0) : Qt.rgba(0,0,0,0)
@@ -695,36 +753,8 @@ Item {
                 }
             }
         }
-        ListView{
-            id:nav_list
-            clip: true
-            ScrollBar.vertical: FluScrollBar {}
-            model:d.handleItems()
-            highlightMoveDuration: 150
-            highlight: Item{
-                clip: true
-                Rectangle{
-                    height: 18
-                    radius: 1.5
-                    color: FluTheme.primaryColor.dark
-                    width: 3
-                    anchors{
-                        verticalCenter: parent.verticalCenter
-                        left: parent.left
-                        leftMargin: 6
-                    }
-                }
-            }
-            onCurrentIndexChanged: {
-                if(d.enableStack){
-                    var item = model[currentIndex]
-                    if(item instanceof FluPaneItem){
-                        item.tap()
-                        d.stackItems.push(item)
-                    }
-                }
-            }
-            currentIndex: -1
+        Flickable{
+            id:layout_flickable
             anchors{
                 top: layout_header.bottom
                 topMargin: 6
@@ -732,29 +762,58 @@ Item {
                 right: parent.right
                 bottom: layout_footer.top
             }
-            delegate: Loader{
-                property var model: modelData
-                property var idx: index
-                property int type: 0
-                sourceComponent: {
-                    if(modelData instanceof FluPaneItem){
-                        return com_panel_item
+            boundsBehavior: ListView.StopAtBounds
+            clip: true
+            contentHeight: nav_list.contentHeight
+            ScrollBar.vertical: FluScrollBar {}
+            ListView{
+                id:nav_list
+                clip: true
+                anchors.fill: parent
+                model:d.handleItems()
+                boundsBehavior: ListView.StopAtBounds
+                highlightMoveDuration: d.animDisabled ? 167 : 0
+                highlight: Item{
+                    clip: true
+                    Rectangle{
+                        height: 18
+                        radius: 1.5
+                        color: FluTheme.primaryColor.dark
+                        width: 3
+                        anchors{
+                            verticalCenter: parent.verticalCenter
+                            left: parent.left
+                            leftMargin: 6
+                        }
                     }
-                    if(modelData instanceof FluPaneItemHeader){
-                        return com_panel_item_header
-                    }
-                    if(modelData instanceof FluPaneItemSeparator){
-                        return com_panel_item_separatorr
-                    }
-                    if(modelData instanceof FluPaneItemExpander){
-                        return com_panel_item_expander
-                    }
-                    if(modelData instanceof FluPaneItemEmpty){
-                        return com_panel_item_empty
+                }
+                currentIndex: -1
+
+                delegate: Loader{
+                    property var model: modelData
+                    property var _idx: index
+                    property int type: 0
+                    sourceComponent: {
+                        if(modelData instanceof FluPaneItem){
+                            return com_panel_item
+                        }
+                        if(modelData instanceof FluPaneItemHeader){
+                            return com_panel_item_header
+                        }
+                        if(modelData instanceof FluPaneItemSeparator){
+                            return com_panel_item_separatorr
+                        }
+                        if(modelData instanceof FluPaneItemExpander){
+                            return com_panel_item_expander
+                        }
+                        if(modelData instanceof FluPaneItemEmpty){
+                            return com_panel_item_empty
+                        }
                     }
                 }
             }
         }
+
         ListView{
             id:layout_footer
             clip: true
@@ -762,6 +821,7 @@ Item {
             height: childrenRect.height
             anchors.bottom: parent.bottom
             interactive: false
+            boundsBehavior: ListView.StopAtBounds
             currentIndex: -1
             model: {
                 if(footerItems){
@@ -785,7 +845,7 @@ Item {
             }
             delegate: Loader{
                 property var model: modelData
-                property var idx: index
+                property var _idx: index
                 property int type: 1
                 sourceComponent: {
                     if(modelData instanceof FluPaneItem){
@@ -812,14 +872,17 @@ Item {
                 duration: 83
             }
         }
-        background: FluRectangle{
-            width: 160
-            radius: [4,4,4,4]
-            FluShadow{
-                radius: 4
+        Connections{
+            target: d
+            function onIsCompactChanged(){
+                if(!d.isCompact){
+                    control_popup.close()
+                }
             }
-            color: FluTheme.dark ? Qt.rgba(51/255,48/255,48/255,1) : Qt.rgba(248/255,250/255,253/255,1)
-            height: 38*Math.min(Math.max(list_view.count,1),8)
+        }
+        padding: 0
+        focus: true
+        contentItem: Item{
             ListView{
                 id:list_view
                 anchors.fill: parent
@@ -828,18 +891,50 @@ Item {
                 model: control_popup.childModel
                 ScrollBar.vertical: FluScrollBar {}
                 delegate:Button{
-                    width: 160
-                    padding:10
+                    id:item_button
+                    width: 180
+                    height: 38
+                    focusPolicy:Qt.TabFocus
                     background: Rectangle{
                         color:  {
-                            if(hovered){
-                                return FluTheme.dark ? Qt.rgba(63/255,60/255,61/255,1) : Qt.rgba(237/255,237/255,242/255,1)
+                            if(FluTheme.dark){
+                                if(item_button.hovered){
+                                    return Qt.rgba(1,1,1,0.06)
+                                }
+                                return Qt.rgba(0,0,0,0)
+                            }else{
+                                if(item_button.hovered){
+                                    return Qt.rgba(0,0,0,0.03)
+                                }
+                                return Qt.rgba(0,0,0,0)
                             }
-                            return FluTheme.dark ? Qt.rgba(51/255,48/255,48/255,1) : Qt.rgba(0,0,0,0)
                         }
+                        FluFocusRectangle{
+                            visible: item_button.activeFocus
+                            radius:4
+                        }
+
+                        Loader{
+                            id:item_dot_loader
+                            anchors{
+                                right: parent.right
+                                verticalCenter: parent.verticalCenter
+                                rightMargin: 10
+                            }
+                            sourceComponent: {
+                                if(model.infoBadge){
+                                    return model.infoBadge
+                                }
+                                return undefined
+                            }
+                        }
+
                     }
                     contentItem: FluText{
                         text:modelData.title
+                        elide: Text.ElideRight
+                        rightPadding: item_dot_loader.width
+                        verticalAlignment: Qt.AlignVCenter
                         anchors{
                             verticalCenter: parent.verticalCenter
                         }
@@ -848,7 +943,8 @@ Item {
                         if(modelData.tapFunc){
                             modelData.tapFunc()
                         }else{
-                            nav_list.currentIndex = idx
+                            modelData.tap()
+                            nav_list.currentIndex = _idx
                             layout_footer.currentIndex = -1
                             if(d.isMinimal || d.isCompact){
                                 d.enableNavigationPanel = false
@@ -859,6 +955,15 @@ Item {
                 }
             }
         }
+        background: FluRectangle{
+            implicitWidth: 180
+            implicitHeight: 38*Math.min(Math.max(list_view.count,1),8)
+            radius: [4,4,4,4]
+            FluShadow{
+                radius: 4
+            }
+            color: FluTheme.dark ? Qt.rgba(51/255,48/255,48/255,1) : Qt.rgba(248/255,250/255,253/255,1)
+        }
         function showPopup(pos,model){
             control_popup.x = pos.x
             control_popup.y = pos.y
@@ -866,11 +971,11 @@ Item {
             control_popup.open()
         }
     }
-    Timer{
-        id:timer_anim_x_enable
-        interval: 150
-        onTriggered: {
-            anim_layout_list_x.enabled = true
+    Component{
+        id:com_placeholder
+        Item{
+            property int launchMode: FluPageType.SingleInstance
+            property string url
         }
     }
     function collapseAll(){
@@ -883,44 +988,100 @@ Item {
     }
     function setCurrentIndex(index){
         nav_list.currentIndex = index
-
+        var item = nav_list.model[index]
+        if(item instanceof FluPaneItem){
+            item.tap()
+        }
     }
     function getItems(){
         return nav_list.model
     }
-    function push(url){
-        if (nav_swipe.depth>0)
-        {
-            let page = nav_swipe.find(function(item) {
-                return item.url === url;
-            })
-            if (page)
-            {
-                switch(page.pageMode)
-                {
-                    case FluNavigationView.SingleTask:
-                        while(nav_swipe.currentItem !== page)
-                        {
-                            nav_swipe.pop()
-                            d.stackItems.pop()
-                        }
-                        return
-                    case FluNavigationView.SingleTop:
-                        if (nav_swipe.currentItem.url === url)
-                            return
-                        break
-                    case FluNavigationView.Standard:
-                    default:
-                }
-            }
-        }
-        nav_swipe.push(url,{url:url})
-    }
     function getCurrentIndex(){
         return nav_list.currentIndex
     }
+    function getCurrentUrl(){
+        if(pageMode === FluNavigationViewType.Stack){
+            var nav_stack = loader_content.item.navStack()
+            if(nav_stack.currentItem){
+                return nav_stack.currentItem.url
+            }
+        }else if(pageMode === FluNavigationViewType.NoStack){
+            return loader_content.source.toString()
+        }
+        return undefined
+    }
+    function push(url,argument={}){
+        function stackPush(){
+            var nav_stack = loader_content.item.navStack()
+            var nav_stack2 = loader_content.item.navStack2()
+            var page = nav_stack.find(function(item) {
+                return item.url === url;
+            })
+            if(page){
+                switch(page.launchMode)
+                {
+                case FluPageType.SingleTask:
+                    while(nav_stack.currentItem !== page)
+                    {
+                        nav_stack.pop()
+                        d.stackItems = d.stackItems.slice(0, -1)
+                    }
+                    return
+                case FluPageType.SingleTop:
+                    if (nav_stack.currentItem.url === url){
+                        return
+                    }
+                    break
+                case FluPageType.Standard:
+                default:
+                }
+            }
+            var pageIndex = -1
+            for(var i=0;i<nav_stack2.children.length;i++){
+                var item =  nav_stack2.children[i]
+                if(item.url === url){
+                    pageIndex = i
+                    break
+                }
+            }
+            var options = Object.assign(argument,{url:url})
+            if(pageIndex!==-1){
+                nav_stack2.currentIndex = pageIndex
+                nav_stack.push(com_placeholder,options)
+            }else{
+                var comp = Qt.createComponent(url)
+                if (comp.status === Component.Ready) {
+                    var obj  = comp.createObject(nav_stack,options)
+                    if(obj.launchMode === FluPageType.SingleInstance){
+                        nav_stack.push(com_placeholder,options)
+                        nav_stack2.children.push(obj)
+                        nav_stack2.currentIndex = nav_stack2.count - 1
+                    }else{
+                        nav_stack.push(obj)
+                    }
+                }else{
+                    console.error(comp.errorString())
+                }
+            }
+            d.stackItems = d.stackItems.concat(nav_list.model[nav_list.currentIndex])
+        }
+        function noStackPush(){
+            if(loader_content.source.toString() === url){
+                return
+            }
+            loader_content.setSource(url,argument)
+            var obj = nav_list.model[nav_list.currentIndex]
+            obj._ext = {url:url,argument:argument}
+            d.stackItems = d.stackItems.concat(obj)
+        }
+        if(pageMode === FluNavigationViewType.Stack){
+            stackPush()
+        }else if(pageMode === FluNavigationViewType.NoStack){
+            noStackPush()
+        }
+    }
     function startPageByItem(data){
-        var items = getItems();
+        var items = getItems()
         for(var i=0;i<items.length;i++){
             var item =  items[i]
             if(item.key === data.key){
@@ -940,5 +1101,8 @@ Item {
     }
     function navButton(){
         return btn_nav
+    }
+    function logoButton(){
+        return image_logo
     }
 }

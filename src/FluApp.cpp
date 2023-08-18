@@ -44,6 +44,10 @@ void FluApp::navigate(const QString& route,const QJsonObject& argument,FluRegist
     }
     QQmlEngine *engine = qmlEngine(appWindow);
     QQmlComponent component(engine, routes().value(route).toString());
+    if (component.isError()) {
+        qCritical() << component.errors();
+        return;
+    }
     QVariantMap properties;
     properties.insert("route",route);
     if(fluRegister){

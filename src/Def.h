@@ -4,6 +4,45 @@
 #include <QObject>
 #include <QtQml/qqml.h>
 
+namespace FluPageType {
+Q_NAMESPACE
+enum LaunchMode {
+    Standard = 0x0000,
+    SingleTask = 0x0001,
+    SingleTop = 0x0002,
+    SingleInstance = 0x0004
+};
+Q_ENUM_NS(LaunchMode)
+}
+
+namespace FluStatusViewType {
+Q_NAMESPACE
+enum StatusMode {
+    Loading = 0x0000,
+    Empty = 0x0001,
+    Error = 0x0002,
+    Success = 0x0004
+};
+Q_ENUM_NS(StatusMode)
+}
+
+
+namespace FluNavigationViewType {
+Q_NAMESPACE
+enum DisplayMode {
+    Open = 0x0000,
+    Compact = 0x0001,
+    Minimal = 0x0002,
+    Auto = 0x0004
+};
+Q_ENUM_NS(DisplayMode)
+enum PageMode {
+    Stack = 0x0000,
+    NoStack = 0x0001
+};
+Q_ENUM_NS(PageMode)
+}
+
 namespace Fluent_DarkMode {
 Q_NAMESPACE
 enum Fluent_DarkModeType {

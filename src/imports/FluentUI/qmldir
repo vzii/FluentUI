@@ -77,3 +77,4 @@ FluTooltip 1.0 Controls/FluTooltip.qml
 FluTreeView 1.0 Controls/FluTreeView.qml
 FluWindow 1.0 Controls/FluWindow.qml
 FluWindowResize 1.0 Controls/FluWindowResize.qml
+FluPage 1.0 Controls/FluPage.qml

@@ -4,97 +4,113 @@ import QtQuick.Layouts 1.12
 import FluentUI 1.0
 
 Item{
-    enum StatusMode  {
-        Loading,
-        Empty,
-        Error,
-        Success
-    }
+    id:control
     default property alias content: container.data
-    property int statusMode: FluStatusView.Loading
+    property int statusMode: FluStatusViewType.Loading
+    property string loadingText:"正在加载..."
+    property string emptyText: "空空如也"
+    property string errorText: "页面出错了.."
+    property string errorButtonText: "重新加载"
+    property color color: FluTheme.dark ? Window.active ?  Qt.rgba(38/255,44/255,54/255,1) : Qt.rgba(39/255,39/255,39/255,1) : Qt.rgba(251/255,251/255,253/255,1)
     signal errorClicked
+    property Component loadingItem : com_loading
+    property Component emptyItem : com_empty
+    property Component errorItem : com_error
+
     Item{
         id:container
         anchors.fill: parent
-        visible: statusMode === FluStatusView.Success
+        visible: statusMode===FluStatusViewType.Success
     }
-    FluArea{
-        paddings: 0
-        border.width: 0
-        anchors.fill: container
-        visible: opacity
-        opacity: statusMode === FluStatusView.Loading
-        Behavior on opacity {
-            NumberAnimation  { duration: 83 }
-        }
-        ColumnLayout{
-            anchors.centerIn: parent
-            visible: statusMode === FluStatusView.Loading
-            FluProgressRing{
-                indeterminate: true
-                Layout.alignment: Qt.AlignHCenter
+    Loader{
+        id:loader
+        anchors.fill: parent
+        visible: statusMode!==FluStatusViewType.Success
+        sourceComponent: {
+            if(statusMode === FluStatusViewType.Loading){
+                return loadingItem
             }
-            FluText{
-                text:"正在加载..."
-                Layout.alignment: Qt.AlignHCenter
+            if(statusMode === FluStatusViewType.Empty){
+                return emptyItem
             }
+            if(statusMode === FluStatusViewType.Error){
+                return errorItem
+            }
+            return undefined
         }
     }
-    FluArea{
-        paddings: 0
-        border.width: 0
-        anchors.fill: container
-        visible: opacity
-        opacity: statusMode === FluStatusView.Empty
-        Behavior on opacity {
-            NumberAnimation  { duration: 83 }
-        }
-        ColumnLayout{
-            anchors.centerIn: parent
-            visible: statusMode === FluStatusView.Empty
-            FluText{
-                text:"空空如也"
-                font: FluTextStyle.BodyStrong
-                Layout.alignment: Qt.AlignHCenter
+    Component{
+        id:com_loading
+        FluArea{
+            paddings: 0
+            border.width: 0
+            radius: 0
+            color:control.color
+            ColumnLayout{
+                anchors.centerIn: parent
+                FluProgressRing{
+                    indeterminate: true
+                    Layout.alignment: Qt.AlignHCenter
+                }
+                FluText{
+                    text:control.loadingText
+                    Layout.alignment: Qt.AlignHCenter
+                }
             }
         }
     }
-    FluArea{
-        paddings: 0
-        border.width: 0
-        anchors.fill: container
-        visible: opacity
-        opacity: statusMode === FluStatusView.Error
-        Behavior on opacity {
-            NumberAnimation  { duration: 83 }
-        }
-        ColumnLayout{
-            anchors.centerIn: parent
-            FluText{
-                text:"页面出错了..."
-                font: FluTextStyle.BodyStrong
-                Layout.alignment: Qt.AlignHCenter
+    Component {
+        id:com_empty
+        FluArea{
+            paddings: 0
+            border.width: 0
+            radius: 0
+            color:control.color
+            ColumnLayout{
+                anchors.centerIn: parent
+                FluText{
+                    text:control.emptyText
+                    font: FluTextStyle.BodyStrong
+                    Layout.alignment: Qt.AlignHCenter
+                }
             }
-            FluFilledButton{
-                id:btn_error
-                Layout.alignment: Qt.AlignHCenter
-                text:"重新加载"
-                onClicked:{
-                    errorClicked.call()
+        }
+    }
+    Component{
+        id:com_error
+        FluArea{
+            paddings: 0
+            border.width: 0
+            radius: 0
+            color:control.color
+            ColumnLayout{
+                anchors.centerIn: parent
+                FluText{
+                    text:control.errorText
+                    font: FluTextStyle.BodyStrong
+                    Layout.alignment: Qt.AlignHCenter
+                }
+                FluFilledButton{
+                    id:btn_error
+                    Layout.alignment: Qt.AlignHCenter
+                    text:control.errorButtonText
+                    onClicked:{
+                        control.errorClicked()
+                    }
                 }
             }
         }
     }
     function showSuccessView(){
-        statusMode = FluStatusView.Success
+        statusMode = FluStatusViewType.Success
     }
     function showLoadingView(){
-        statusMode = FluStatusView.Loading
+        statusMode = FluStatusViewType.Loading
     }
     function showEmptyView(){
-        statusMode = FluStatusView.Empty
+        statusMode = FluStatusViewType.Empty
     }
     function showErrorView(){
-        statusMode = FluStatusView.Error
+        statusMode = FluStatusViewType.Error
     }
 }

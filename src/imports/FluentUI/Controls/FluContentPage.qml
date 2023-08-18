@@ -4,19 +4,30 @@ import QtQuick.Window 2.12
 import QtQuick.Controls 2.12
 import FluentUI 1.0
 
-Item {
+FluPage {
     property alias title: text_title.text
     default property alias content: container.data
     property int leftPadding: 10
     property int topPadding: 0
     property int rightPadding: 10
     property int bottomPadding: 10
-    property int pageMode: FluNavigationView.Standard
-    property string url: ''
+    property alias color: status_view.color
+    property alias statusMode: status_view.statusMode
+    property alias loadingText: status_view.loadingText
+    property alias emptyText:status_view.emptyText
+    property alias errorText:status_view.errorText
+    property alias errorButtonText:status_view.errorButtonText
+    property alias loadingItem :status_view.loadingItem
+    property alias emptyItem : status_view.emptyItem
+    property alias errorItem :status_view.errorItem
+    signal errorClicked
+
     id:control
     FluText{
         id:text_title
-        font: FluTextStyle.TitleLarge
+        visible: text !== ""
+        height: visible ? contentHeight : 0
+        font: FluTextStyle.Title
         anchors{
             top: parent.top
             topMargin: control.topPadding
@@ -26,9 +37,11 @@ Item {
             rightMargin: control.rightPadding
         }
     }
-    Item{
-        clip: true
-        id:container
+    FluStatusView{
+        id:status_view
+        color: "#00000000"
+        statusMode: FluStatusViewType.Success
+        onErrorClicked: control.errorClicked()
         anchors{
             left: parent.left
             right: parent.right
@@ -37,6 +50,11 @@ Item {
             leftMargin: control.leftPadding
             rightMargin: control.rightPadding
             bottomMargin: control.bottomPadding
+        }
+        Item{
+            clip: true
+            id:container
+            anchors.fill: parent
         }
     }
 }
